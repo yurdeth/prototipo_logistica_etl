@@ -1,0 +1,18 @@
+* text=auto eol=lf
+
+# Scripts de shell exigen LF incluso en Windows
+*.sh text eol=lf
+
+# SQL y configuración
+*.sql text
+*.env text
+*.toml text
+*.yaml text
+*.yml text
+*.md text
+
+# Binarios
+*.png binary
+*.jpg binary
+*.csv binary
+*.parquet binary

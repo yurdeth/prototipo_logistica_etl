@@ -1,0 +1,29 @@
+# Entorno virtual (uv/venv): se recrea con `uv sync`
+.venv/
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Secretos: credenciales de la OLTP, el DW y Neo4j
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+.junie/
+
+# Notebooks de exploración (si se agregan, se versiona solo lo limpio)
+.ipynb_checkpoints/
+
+# Artefactos de corrida
+*.log
+/runs/
+
+# Basura de sistema operativo
+.DS_Store
