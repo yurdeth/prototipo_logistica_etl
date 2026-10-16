@@ -27,9 +27,9 @@ VALUES (0, NULL, 0, 0, 0, '(sin fecha)', 0, '(sin fecha)', false)
 ON CONFLICT (id_tiempo) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS dim_estado (
-    id_estado     integer PRIMARY KEY,             -- subrogada
-    id_estado_oltp integer NOT NULL UNIQUE,
-    nombre_estado text NOT NULL
+    id_estado_sk    integer PRIMARY KEY,
+    id_estado_oltp  integer NOT NULL UNIQUE,
+    nombre_estado   text NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS dim_territorio (
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS hecho_envios (
     tiempo_registro_sk   integer NOT NULL REFERENCES dim_tiempo(id_tiempo),
     tiempo_comprometida_sk integer NOT NULL REFERENCES dim_tiempo(id_tiempo),
     tiempo_entrega_sk    integer NOT NULL DEFAULT 0 REFERENCES dim_tiempo(id_tiempo),
-    estado_sk            integer NOT NULL REFERENCES dim_estado(id_estado),
+    estado_sk            integer NOT NULL REFERENCES dim_estado(id_estado_sk),
     remitente_sk         integer NOT NULL REFERENCES dim_cliente(id_cliente_sk),
     destinatario_sk      integer NOT NULL REFERENCES dim_cliente(id_cliente_sk),
     sucursal_origen_sk   integer NOT NULL REFERENCES dim_sucursal(id_sucursal_sk),
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS hecho_eventos (
     hecho_id              bigint PRIMARY KEY,
     id_evento_oltp        bigint NOT NULL UNIQUE,
     envio_oltp_id         integer NOT NULL,
-    estado_sk             integer NOT NULL REFERENCES dim_estado(id_estado),
+    estado_sk             integer NOT NULL REFERENCES dim_estado(id_estado_sk),
     tiempo_sk             integer NOT NULL REFERENCES dim_tiempo(id_tiempo),
     horas_desde_anterior  numeric(10,2) NOT NULL DEFAULT 0,
     horas_desde_registro  numeric(10,2) NOT NULL DEFAULT 0,
