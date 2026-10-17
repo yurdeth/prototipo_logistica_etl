@@ -48,11 +48,11 @@ Copie `.env.example` a `.env` y complete las contraseñas:
 cp .env.example .env
 ```
 
-| Variable | Descripción |
-|---|---|
+| Variable   | Descripción                                                                         |
+|------------|-------------------------------------------------------------------------------------|
 | `ETL_DB_*` | Conexión a la OLTP (`prototipo_logistica`) con el rol de solo lectura `etl_reader`. |
-| `DW_DB_*` | Conexión al DW (`prototipo_logistica_dw`) con el rol de escritura `etl_writer`. |
-| `NEO4J_*` | Conexión a Neo4j (opcional por ahora; el pipeline no lo usa todavía). |
+| `DW_DB_*`  | Conexión al DW (`prototipo_logistica_dw`) con el rol de escritura `etl_writer`.     |
+| `NEO4J_*`  | Conexión a Neo4j (opcional por ahora; el pipeline no lo usa todavía).               |
 
 ## Puesta en marcha
 
