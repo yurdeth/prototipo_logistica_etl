@@ -9,6 +9,7 @@ ETAPAS_ESPERADAS = [
     "hechos",
     "grafo",
     "escenarios",
+    "verificación",
 ]
 
 
@@ -19,6 +20,7 @@ def test_corrida_completa_ejecuta_todas_las_etapas():
     assert reporte["extract"]["resultado"]["st_envios"] > 0
     assert reporte["hechos"]["resultado"]["hecho_envios"] > 0
     assert len(reporte["escenarios"]["resultado"]) == 3
+    assert reporte["verificación"]["resultado"]["correcto"] is True
 
 
 def test_corrida_es_idempotente_en_dimensiones():

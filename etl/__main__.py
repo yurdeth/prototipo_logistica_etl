@@ -4,9 +4,12 @@ Ejecuta en orden las etapas del pipeline y reporta los conteos de cada una.
 Si una etapa falla, la corrida se detiene ahí mismo sin ejecutar las
 siguientes; cada etapa es responsable de su propia transacción, y las que
 dependen del estado anterior (dimensiones antes que hechos, grafo antes que
-escenarios) se ejecutan en este orden por construcción.
+escenarios) se ejecutan en este orden por construcción. La corrida termina
+con la verificación de cuadre: si alguna frontera difiere, el proceso sale
+con error.
 """
 
+import sys
 import time
 
 from etl.extract.extractor import extraer_todo
@@ -15,6 +18,7 @@ from etl.load.grafo import cargar_grafo
 from etl.migrar import migrar
 from etl.transform.dimensiones import cargar_dimensiones
 from etl.transform.hechos import cargar_hechos
+from etl.verify.cuadre import cuadrar
 
 
 def correr_todo() -> dict[str, dict]:
@@ -62,6 +66,24 @@ def correr_todo() -> dict[str, dict]:
             f" {escenario['minutos_totales']} min{nota}"
         )
 
+    etapa("verificación", cuadrar)
+    verificacion = reporte["verificación"]["resultado"]
+    for tabla, fila in verificacion["tablas"].items():
+        marca = "ok" if fila["oltp"] == fila["staging"] else "DIFIERE"
+        print(f"  {tabla:24} oltp {fila['oltp']:>7}  staging {fila['staging']:>7}  {marca}")
+    for hecho, fila in verificacion["hechos"].items():
+        marca = "ok" if fila["staging"] == fila["hecho"] else "DIFIERE"
+        print(f"  {hecho:24} staging {fila['staging']:>7}  hecho {fila['hecho']:>7}  {marca}")
+    print(
+        "  escenarios de la corrida:",
+        ", ".join(verificacion["escenarios"]["registrados"]) or "(ninguno)",
+    )
+
+    if not verificacion["correcto"]:
+        print("\nCUADRE FINAL: DIFIERE — la corrida termina con error")
+        sys.exit(1)
+
+    print("\nCUADRE FINAL: ok")
     return reporte
 
 
