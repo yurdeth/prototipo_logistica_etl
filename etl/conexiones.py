@@ -3,6 +3,7 @@
 import psycopg
 
 from etl.config import ajustes
+from neo4j import GraphDatabase
 
 
 def conexion_oltp() -> psycopg.Connection:
@@ -16,6 +17,7 @@ def conexion_oltp() -> psycopg.Connection:
         dbname=a.etl_db_database,
         user=a.etl_db_username,
         password=a.etl_db_password,
+        # Evita escrituras accidentales a nivel de sesión.
         options="-c default_transaction_read_only=on",
     )
 
@@ -30,3 +32,11 @@ def conexion_dw() -> psycopg.Connection:
         user=a.dw_db_username,
         password=a.dw_db_password,
     )
+
+def conexion_neo4j():
+    """Driver de Neo4j; úsalo con `with` para que se cierre solo."""
+    a = ajustes()
+    driver = GraphDatabase.driver(a.neo4j_uri, auth=(a.neo4j_user, a.neo4j_password))
+    # Comprueba que Neo4j esté disponible antes de continuar.
+    driver.verify_connectivity()
+    return driver
