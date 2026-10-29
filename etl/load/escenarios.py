@@ -80,7 +80,6 @@ def ruta_optima(
         )
 
     cola = [(0, 0, origen, [origen])]
-    mejor_km: dict[str, float] = {origen: 0}
     visitados: set[str] = set()
 
     while cola:
@@ -105,7 +104,9 @@ def ruta_optima(
                 ),
             )
 
-    return {"ruta": "(sin ruta disponible)", "minutos": 0, "km": 0.0}
+    # sin camino posible (red desconectada): totales sin valor, nunca cero,
+    # para que el registro no se lea como una ruta de costo nulo
+    return {"ruta": "(sin ruta disponible)", "minutos": None, "km": None}
 
 
 def ejecutar_escenarios() -> list[dict]:
@@ -155,4 +156,6 @@ def ejecutar_escenarios() -> list[dict]:
 
 if __name__ == "__main__":
     for r in ejecutar_escenarios():
-        print(f"[{r['escenario']:10}] {r['ruta']}  = {r['km_totales']} km / {r['minutos_totales']} min")
+        km = "sin ruta" if r["km_totales"] is None else f"{r['km_totales']} km"
+        minutos = "sin ruta" if r["minutos_totales"] is None else f"{r['minutos_totales']} min"
+        print(f"[{r['escenario']:10}] {r['ruta']}  = {km} / {minutos}")
