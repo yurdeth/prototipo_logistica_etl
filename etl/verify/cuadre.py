@@ -1,9 +1,12 @@
 """Verify: cuadre final de la corrida, reportado al concluir el proceso.
 
-Compara tres fronteras:
+Compara tres fronteras de conteos, una frontera de agregados y los escenarios:
 
   OLTP ↔ staging      cada consulta de extract contra el conteo de su st_*
   staging ↔ hechos    cada fuente contra el hecho que la reconstruye
+  agregados           sumas espejo OLTP ↔ DW: envíos (conteo y peso),
+                      entregados y a tiempo, despachos (conteo, km y costo)
+                      e incidencias (conteo y minutos de retraso)
   escenarios          la última corrida debe dejar los tres (base, bloqueo,
                       congestión) registrados en resultado_escenario
 
@@ -20,6 +23,48 @@ FUENTES_HECHOS = [
     ("st_envios", "hecho_envios"),
     ("st_despachos", "hecho_despachos"),
     ("st_envio_eventos", "hecho_eventos"),
+    ("st_incidencias", "hecho_incidencias"),
+]
+
+# agregados espejo OLTP ↔ DW: mismas filas y mismos totales, no solo conteos
+ENTREGADOS_OLTP = """
+    SELECT
+        count(*) AS entregados,
+        count(*) FILTER (WHERE entrega.hora <= e.fecha_comprometida) AS a_tiempo
+    FROM envios.envios e
+    JOIN LATERAL (
+        SELECT MAX(ev.ocurrido_en) AS hora
+        FROM envios.envio_eventos ev
+        JOIN envios.estados_envios s ON s.id_estado = ev.estado_envio_id
+        WHERE ev.envio_id = e.id_envio AND s.nombre_estado = 'ENTREGADO'
+    ) entrega ON true
+    JOIN envios.estados_envios s ON s.id_estado = e.estado_envio_id
+    WHERE s.nombre_estado = 'ENTREGADO'
+"""
+
+ENTREGADOS_DW = """
+    SELECT
+        count(*) AS entregados,
+        count(*) FILTER (WHERE entregado_a_tiempo) AS a_tiempo
+    FROM hecho_envios
+    WHERE horas_hasta_entrega IS NOT NULL
+"""
+
+AGREGADOS = [
+    ("envios: conteo y peso",
+     "SELECT count(*), SUM(peso_kg) FROM envios.envios",
+     "SELECT count(*), SUM(peso_kg) FROM hecho_envios"),
+    ("entregados y a tiempo",
+     ENTREGADOS_OLTP,
+     ENTREGADOS_DW),
+    ("despachos: conteo, km y costo",
+     "SELECT count(*), COALESCE(SUM(km_recorridos), 0),"
+     " COALESCE(SUM(costo_estimado), 0) FROM rutas.despachos",
+     "SELECT count(*), COALESCE(SUM(km_recorridos), 0),"
+     " COALESCE(SUM(costo_estimado), 0) FROM hecho_despachos"),
+    ("incidencias: conteo y minutos",
+     "SELECT count(*), COALESCE(SUM(minutos_retraso), 0) FROM rutas.incidencias",
+     "SELECT count(*), COALESCE(SUM(minutos_retraso), 0) FROM hecho_incidencias"),
 ]
 
 ESCENARIOS = ("base", "bloqueo", "congestion")
@@ -58,12 +103,19 @@ def _contar_dw(cur) -> tuple[dict[str, int], dict[str, int], list[str]]:
 
 
 def cuadrar() -> dict:
-    """Ejecuta el cuadre completo; `correcto` resume las tres fronteras."""
+    """Ejecuta el cuadre completo; `correcto` resume todas las fronteras."""
     with conexion_oltp() as cn_oltp, cn_oltp.cursor() as cur_oltp, \
          conexion_dw() as cn_dw, cn_dw.cursor() as cur_dw:
 
         oltp = _contar_oltp(cur_oltp)
         staging, hechos, escenarios = _contar_dw(cur_dw)
+
+        agregados: dict[str, dict[str, tuple]] = {}
+        for nombre, sql_oltp, sql_dw in AGREGADOS:
+            cur_oltp.execute(sql_oltp)
+            agregados[nombre] = {"oltp": cur_oltp.fetchone()}
+            cur_dw.execute(sql_dw)
+            agregados[nombre]["dw"] = cur_dw.fetchone()
 
     tablas = {
         tabla: {"oltp": oltp[tabla], "staging": staging[tabla]}
@@ -78,11 +130,13 @@ def cuadrar() -> dict:
     return {
         "tablas": tablas,
         "hechos": frontera_hechos,
+        "agregados": agregados,
         "escenarios": {"esperados": list(ESCENARIOS), "registrados": escenarios},
         "correcto": all(
             fila["oltp"] == fila["staging"] for fila in tablas.values()
         )
         and all(fila["staging"] == fila["hecho"] for fila in frontera_hechos.values())
+        and all(fila["oltp"] == fila["dw"] for fila in agregados.values())
         and escenarios_ok,
     }
 
@@ -95,6 +149,9 @@ if __name__ == "__main__":
     for hecho, fila in reporte["hechos"].items():
         marca = "ok" if fila["staging"] == fila["hecho"] else "DIFIERE"
         print(f"{hecho:24} staging {fila['staging']:>7}  hecho {fila['hecho']:>7}  {marca}")
+    for nombre, fila in reporte["agregados"].items():
+        marca = "ok" if fila["oltp"] == fila["dw"] else "DIFIERE"
+        print(f"{nombre:32} oltp {fila['oltp']}  dw {fila['dw']}  {marca}")
     print(
         "escenarios:",
         ", ".join(reporte["escenarios"]["registrados"]) or "(ninguno)",

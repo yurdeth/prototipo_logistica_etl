@@ -60,10 +60,11 @@ def correr_todo() -> dict[str, dict]:
             if escenario["tramo_afectado"]
             else ""
         )
+        km = "sin ruta" if escenario["km_totales"] is None else f"{escenario['km_totales']} km"
+        minutos = "sin ruta" if escenario["minutos_totales"] is None else f"{escenario['minutos_totales']} min"
         print(
             f"  {escenario['escenario']:11} {escenario['origen']} → {escenario['destino']}:"
-            f" {escenario['ruta']}, {escenario['km_totales']} km,"
-            f" {escenario['minutos_totales']} min{nota}"
+            f" {escenario['ruta']}, {km}, {minutos}{nota}"
         )
 
     etapa("verificación", cuadrar)
@@ -74,6 +75,9 @@ def correr_todo() -> dict[str, dict]:
     for hecho, fila in verificacion["hechos"].items():
         marca = "ok" if fila["staging"] == fila["hecho"] else "DIFIERE"
         print(f"  {hecho:24} staging {fila['staging']:>7}  hecho {fila['hecho']:>7}  {marca}")
+    for nombre, fila in verificacion["agregados"].items():
+        marca = "ok" if fila["oltp"] == fila["dw"] else "DIFIERE"
+        print(f"  {nombre:32} oltp {fila['oltp']}  dw {fila['dw']}  {marca}")
     print(
         "  escenarios de la corrida:",
         ", ".join(verificacion["escenarios"]["registrados"]) or "(ninguno)",
