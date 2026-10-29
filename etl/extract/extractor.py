@@ -33,7 +33,7 @@ def extraer_tabla(nombre_tabla: str, cur_oltp: psycopg.Cursor, cur_dw: psycopg.C
 def _columnas_de(cur_dw: psycopg.Cursor, nombre_tabla: str) -> list[str]:
     cur_dw.execute(
         "SELECT column_name FROM information_schema.columns"
-        " WHERE table_schema = 'public' AND table_name = %s"
+        " WHERE table_schema = 'staging' AND table_name = %s"
         " ORDER BY ordinal_position",
         (nombre_tabla,),
     )

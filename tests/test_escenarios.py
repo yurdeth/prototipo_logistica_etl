@@ -43,14 +43,14 @@ def test_los_escenarios_quedan_registrados_en_el_dw():
         password=ajustes().dw_db_password,
     ) as cn, cn.cursor() as cur:
         cur.execute(
-            "SELECT count(*) FROM resultado_escenario"
+            "SELECT count(*) FROM dw.resultado_escenario"
             " WHERE escenario IN ('base', 'bloqueo', 'congestion')"
         )
         (total,) = cur.fetchone()
         assert total >= 3
 
         cur.execute(
-            "SELECT ruta FROM resultado_escenario"
+            "SELECT ruta FROM dw.resultado_escenario"
             " WHERE escenario = 'bloqueo' ORDER BY id DESC LIMIT 1"
         )
         (ruta_bloqueo,) = cur.fetchone()

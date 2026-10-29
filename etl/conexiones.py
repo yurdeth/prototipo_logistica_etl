@@ -29,4 +29,10 @@ def conexion_dw() -> psycopg.Connection:
         dbname=a.dw_db_database,
         user=a.dw_db_username,
         password=a.dw_db_password,
+        # El DW se organiza en dos esquemas: staging (copias planas de la
+        # operación) y dw (modelo estrella y registro de escenarios);
+        # sql_versiones permanece en public. Con este search_path el DML del
+        # pipeline no necesita cualificar; el DDL de las migraciones sí se
+        # cualifica siempre.
+        options="-c search_path=staging,dw,public",
     )

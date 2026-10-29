@@ -31,6 +31,10 @@ def migrar() -> list[int]:
 
     for version, archivo in pendientes():
         with conexion_dw() as cn, cn.cursor() as cur:
+            # Las migraciones crean la estructura con nombres cualificados y
+            # ejecutan con search_path en public, de modo que el resultado
+            # sea idéntico en instalaciones nuevas y ya migradas.
+            cur.execute("SET search_path TO public")
             cur.execute(archivo.read_text(encoding="utf-8"))
             cur.execute(
                 "INSERT INTO sql_versiones (version, archivo) VALUES (%s, %s)",
