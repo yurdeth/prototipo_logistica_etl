@@ -20,7 +20,7 @@ CARGAS = [
     "dim_sucursal",
     "dim_vehiculo",
     "dim_conductor",
-    "dim_ruta",
+    "dim_tipo_incidencia",
 ]
 
 SQL: dict[str, str] = {
@@ -112,18 +112,15 @@ SQL: dict[str, str] = {
           AND NOT EXISTS (SELECT 1 FROM dim_conductor d
                           WHERE d.id_empleado_oltp = e.id_empleado)
     """,
-    "dim_ruta": """
-        INSERT INTO dim_ruta (id_ruta_sk, id_conexion_oltp, origen, destino,
-                              distancia_km, tiempo_min)
-        SELECT (SELECT COALESCE(MAX(id_ruta_sk), 0) FROM dim_ruta)
-               + ROW_NUMBER() OVER (ORDER BY c.id_conexion),
-               c.id_conexion, so.nombre_sucursal, sd.nombre_sucursal,
-               c.distancia_km, c.tiempo_min
-        FROM st_conexiones c
-        JOIN st_sucursales so ON so.id_sucursal = c.origen_sucursal_id
-        JOIN st_sucursales sd ON sd.id_sucursal = c.destino_sucursal_id
-        WHERE NOT EXISTS (SELECT 1 FROM dim_ruta d
-                          WHERE d.id_conexion_oltp = c.id_conexion)
+    "dim_tipo_incidencia": """
+        INSERT INTO dim_tipo_incidencia (id_tipo_incidencia_sk,
+                                         id_tipo_incidencia_oltp, nombre_tipo)
+        SELECT (SELECT COALESCE(MAX(id_tipo_incidencia_sk), 0) FROM dim_tipo_incidencia)
+               + ROW_NUMBER() OVER (ORDER BY t.id_tipo),
+               t.id_tipo, t.nombre_tipo
+        FROM st_tipos_incidencias t
+        WHERE NOT EXISTS (SELECT 1 FROM dim_tipo_incidencia d
+                          WHERE d.id_tipo_incidencia_oltp = t.id_tipo)
     """,
 }
 
@@ -136,6 +133,8 @@ FECHAS_DE_LA_OPERACION = """
     SELECT DISTINCT (ocurrido_en AT TIME ZONE %s)::date FROM st_envio_eventos
     UNION
     SELECT DISTINCT fecha FROM st_despachos
+    UNION
+    SELECT DISTINCT (ocurrio_en AT TIME ZONE %s)::date FROM st_incidencias
 """
 
 
@@ -146,7 +145,7 @@ def cargar_dimensiones() -> dict[str, int]:
     with conexion_dw() as cn, cn.cursor() as cur:
         cur.execute(
             "CREATE TEMP TABLE fechas_corte AS " + FECHAS_DE_LA_OPERACION,
-            (ZONA_LOCAL, ZONA_LOCAL, ZONA_LOCAL),
+            (ZONA_LOCAL, ZONA_LOCAL, ZONA_LOCAL, ZONA_LOCAL),
         )
 
         for tabla in CARGAS:

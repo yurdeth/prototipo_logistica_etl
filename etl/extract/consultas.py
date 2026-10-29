@@ -70,4 +70,8 @@ CONSULTAS: dict[str, str] = {
         FROM rutas.incidencias i
         JOIN rutas.tipos_incidencias ti ON ti.id_tipo = i.tipo_incidencia_id
     """,
+    "st_tipos_incidencias": """
+        SELECT id_tipo, nombre_tipo
+        FROM rutas.tipos_incidencias
+    """,
 }

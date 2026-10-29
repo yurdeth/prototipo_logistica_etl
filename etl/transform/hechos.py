@@ -56,7 +56,8 @@ SQL_HECHO_DESPACHOS = """
     INSERT INTO hecho_despachos (
         hecho_id, id_despacho_oltp, tiempo_sk, sucursal_sk, conductor_sk,
         vehiculo_sk, estado_despacho, km_planificados, km_recorridos,
-        costo_estimado, minutos_retraso, peso_asignado_kg, entregas_completadas)
+        costo_estimado, minutos_retraso, peso_asignado_kg, entregas_completadas,
+        numero_paradas)
     SELECT
         ROW_NUMBER() OVER (ORDER BY d.id_despacho),
         d.id_despacho,
@@ -68,7 +69,8 @@ SQL_HECHO_DESPACHOS = """
         d.km_planificados, d.km_recorridos, d.costo_estimado,
         COALESCE(inc.retraso, 0),
         COALESCE(par.peso, 0),
-        COALESCE(par.entregadas, 0)
+        COALESCE(par.entregadas, 0),
+        COALESCE(par.paradas, 0)
     FROM st_despachos d
     JOIN dim_tiempo t ON t.fecha = d.fecha
     JOIN dim_sucursal suc ON suc.id_sucursal_oltp = d.sucursal_origen_id
@@ -82,6 +84,7 @@ SQL_HECHO_DESPACHOS = """
     ) inc ON inc.despacho_id = d.id_despacho
     LEFT JOIN (
         SELECT p.despacho_id,
+               COUNT(*) AS paradas,
                SUM(e.peso_kg) AS peso,
                COUNT(*) FILTER (WHERE e.nombre_estado = 'ENTREGADO') AS entregadas
         FROM st_despacho_paradas p
@@ -108,15 +111,33 @@ SQL_HECHO_EVENTOS = """
     WINDOW ventana AS (PARTITION BY ev.envio_id ORDER BY ev.id_evento)
 """
 
+SQL_HECHO_INCIDENCIAS = """
+    INSERT INTO hecho_incidencias (
+        hecho_id, id_incidencia_oltp, tiempo_sk, tipo_incidencia_sk,
+        id_despacho_oltp, id_envio_oltp, minutos_retraso)
+    SELECT
+        ROW_NUMBER() OVER (ORDER BY i.id_incidencia),
+        i.id_incidencia,
+        t.id_tiempo,
+        ti.id_tipo_incidencia_sk,
+        i.despacho_id,
+        i.envio_id,
+        i.minutos_retraso
+    FROM st_incidencias i
+    JOIN dim_tiempo t ON t.fecha = (i.ocurrio_en AT TIME ZONE %(zona)s)::date
+    JOIN dim_tipo_incidencia ti ON ti.id_tipo_incidencia_oltp = i.tipo_incidencia_id
+"""
+
 HECHOS = [
     ("hecho_envios", SQL_HECHO_ENVIOS),
     ("hecho_despachos", SQL_HECHO_DESPACHOS),
     ("hecho_eventos", SQL_HECHO_EVENTOS),
+    ("hecho_incidencias", SQL_HECHO_INCIDENCIAS),
 ]
 
 
 def cargar_hechos() -> dict[str, int]:
-    """Reconstruye los 3 hechos desde staging; devuelve filas por hecho."""
+    """Reconstruye los 4 hechos desde staging; devuelve filas por hecho."""
     cargadas: dict[str, int] = {}
 
     with conexion_dw() as cn, cn.cursor() as cur:

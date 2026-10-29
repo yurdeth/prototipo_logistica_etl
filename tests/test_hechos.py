@@ -75,6 +75,36 @@ def test_los_despachos_y_sus_km_cuadran():
     assert dw == oltp
 
 
+def test_las_paradas_por_despacho_cuadran():
+    with conexion_oltp() as cn, cn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM rutas.despacho_paradas")
+        (paradas_oltp,) = cur.fetchone()
+
+    with conexion_dw() as cn, cn.cursor() as cur:
+        cur.execute("SELECT COALESCE(SUM(numero_paradas), 0) FROM hecho_despachos")
+        (paradas_dw,) = cur.fetchone()
+
+    assert paradas_dw == paradas_oltp
+
+
+def test_las_incidencias_cuadran():
+    with conexion_oltp() as cn, cn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*), COALESCE(SUM(minutos_retraso), 0)"
+            " FROM rutas.incidencias"
+        )
+        oltp = cur.fetchone()
+
+    with conexion_dw() as cn, cn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*), COALESCE(SUM(minutos_retraso), 0)"
+            " FROM hecho_incidencias"
+        )
+        dw = cur.fetchone()
+
+    assert dw == oltp
+
+
 def test_los_eventos_cuadran_y_las_horas_son_crecientes():
     with conexion_oltp() as cn, cn.cursor() as cur:
         cur.execute("SELECT count(*) FROM envios.envio_eventos")

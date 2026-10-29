@@ -11,7 +11,7 @@ TOTALES_ESPERADOS = {
     "dim_sucursal": 8,
     "dim_vehiculo": 18,
     "dim_conductor": 8,
-    "dim_ruta": 11,
+    "dim_tipo_incidencia": 6,
 }
 
 

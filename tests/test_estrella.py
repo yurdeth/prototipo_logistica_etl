@@ -4,17 +4,31 @@ el miembro 0 de dim_tiempo que evita nulos en los hechos no cerrados."""
 from etl.conexiones import conexion_dw
 
 DIMENSIONES = ["dim_tiempo", "dim_estado", "dim_territorio", "dim_cliente",
-               "dim_sucursal", "dim_vehiculo", "dim_conductor", "dim_ruta"]
+               "dim_sucursal", "dim_vehiculo", "dim_conductor",
+               "dim_tipo_incidencia"]
 
-HECHOS = ["hecho_envios", "hecho_despachos", "hecho_eventos"]
+HECHOS = ["hecho_envios", "hecho_despachos", "hecho_eventos", "hecho_incidencias"]
 
 
 def test_todas_las_tablas_del_estrella_existen():
     with conexion_dw() as cn, cn.cursor() as cur:
-        for tabla in DIMENSIONES + HECHOS:
+        for tabla in DIMENSIONES + HECHOS + ["resultado_escenario"]:
             cur.execute(
                 "SELECT count(*) FROM information_schema.tables"
-                " WHERE table_schema = 'public' AND table_name = %s",
+                " WHERE table_schema = 'dw' AND table_name = %s",
+                (tabla,),
+            )
+            (existe,) = cur.fetchone()
+            assert existe == 1
+
+
+def test_las_copias_de_staging_viven_en_su_esquema():
+    with conexion_dw() as cn, cn.cursor() as cur:
+        for tabla in ("st_envios", "st_despachos", "st_incidencias",
+                      "st_despacho_paradas"):
+            cur.execute(
+                "SELECT count(*) FROM information_schema.tables"
+                " WHERE table_schema = 'staging' AND table_name = %s",
                 (tabla,),
             )
             (existe,) = cur.fetchone()
